@@ -15,7 +15,7 @@ const gameConstants = {
 }
 
 let counter = 0
-let xText;
+let xText = 0;
 
 let towerCountSelect; // Add dropdown variable
 let shootingIntervalSelect; // Add new dropdown variable
@@ -87,7 +87,7 @@ class Flight {
 
   drawScore() {
     fill(this.color);
-    xText += 20;
+    xText += 30;
     let playerHits = 0;
     for (let i = 0; i < this.hits.length; i++) {
       if (i != this.playerNumber) {
@@ -98,7 +98,7 @@ class Flight {
     if (shared.canonTowerHits && this.playerName !== "observer") {
       canonHits = shared.canonTowerHits ? -shared.canonTowerHits[this.playerNumber] : 0;
     }
-    text(this.playerName + " (" + playerHits + ", " + canonHits + ")", 1000, xText);
+    text(this.playerName + " (" + playerHits + ", " + canonHits + ")", 960, xText);
   }
 
   shoot() {
@@ -141,7 +141,7 @@ class Flight {
   }
 }
 
-class CanonTower {
+class Canon {
   constructor(config) {
     this.objectNumber = config.objectNumber;
     this.objectName = config.objectName;
@@ -209,7 +209,7 @@ class CanonTower {
     fill(0);
     xText += 30;
     const totalHits = this.hits.reduce((a, b) => a + b, 0);
-    text(this.objectName + " (Hits: " + totalHits + ")", 1000, xText);
+    text(this.objectName + " (" + totalHits + ")", 960, xText);
   }
 
   findNearestFlight(flights) {
@@ -309,7 +309,7 @@ function preload() {
     gameObjects: [],  // Start with empty array
     canonTowerHits: Array(15).fill(0),
     shootingInterval: 'Normal (1s)',  // host shooting interval selection
-    bulletSpeed: '3'   // default bullet speed selection (for Flight factor; CanonTower uses double)
+    bulletSpeed: '3'   // default bullet speed selection (for Flight factor; Canon uses double)
   });
 
   me = partyLoadMyShared({ playerName: "observer" });
@@ -319,9 +319,11 @@ function preload() {
 function setup() {
   createCanvas(1200, 1000);
 
-  // Create dropdown for tower count
+  // Create headline and dropdown for tower count
+  fill(0);
+  text('Number of Towers:', 10, 55);
   towerCountSelect = createSelect();
-  towerCountSelect.position(10, 60);
+  towerCountSelect.position(20, 70);
   towerCountSelect.option('3');
   towerCountSelect.option('6');
   towerCountSelect.option('9');
@@ -333,17 +335,19 @@ function setup() {
     towerCountSelect.changed(updateTowerCount);
   }
 
-  // Create dropdown for shooting interval
+  // Create headline and dropdown for shooting interval
+  text('Shooting Interval:', 10, 115);
   shootingIntervalSelect = createSelect();
-  shootingIntervalSelect.position(10, 120);
+  shootingIntervalSelect.position(20, 130);
   Object.keys(gameConstants.shootingIntervals).forEach(key => {
     shootingIntervalSelect.option(key);
   });
   shootingIntervalSelect.selected('Normal (1s)');
 
-  // [NEW] Create dropdown for bullet speed option
+  // Create headline and dropdown for bullet speed
+  text('Bullet Speed:', 10, 175);
   bulletSpeedSelect = createSelect();
-  bulletSpeedSelect.position(10, 180);
+  bulletSpeedSelect.position(20, 190);
   bulletSpeedSelect.option('2');   // slow
   bulletSpeedSelect.option('3');   // normal
   bulletSpeedSelect.option('4');   // fast
@@ -385,9 +389,9 @@ function generateTowers(count) {
     const x = gameConstants.centerX + radius * cos(angle);
     const y = gameConstants.centerY + radius * sin(angle);
 
-    towers.push(new CanonTower({
+    towers.push(new Canon({
       objectNumber: i,
-      objectName: `canonTower${i}`,
+      objectName: `canon${i}`,
       x: x,
       y: y,
       r: 30,
@@ -407,13 +411,18 @@ function draw() {
   fill('white')
   ellipse(500, 500, gameConstants.planetDiameter)
 
-  fill('black')
+  // Draw headlines for dropdowns
+  fill('black');
+  text('Number of Towers:', 10, 55);
+  text('Shooting Interval:', 10, 115);
+  text('Bullet Speed:', 10, 175);
+
   if (partyIsHost()) {
     towerCountSelect.removeAttribute('disabled');
     shootingIntervalSelect.removeAttribute('disabled');
     bulletSpeedSelect.removeAttribute('disabled');  // enable for host
     //  fill('yellow')
-    text('I am host', 10, 20);
+    text('I am host', 500, 30);
     // Host: update shared selections so clients see same values
     shared.shootingInterval = shootingIntervalSelect.value();
     shared.bulletSpeed = bulletSpeedSelect.value();
@@ -432,7 +441,8 @@ function draw() {
     shootingIntervalSelect.selected(shared.shootingInterval);
     bulletSpeedSelect.selected(shared.bulletSpeed);
   }
-  text(me.playerName, 10, 40);
+  textSize(18)
+  text(me.playerName, 400, 30);
 
   if (gameState === "PLAYING") {
     stepLocal();
@@ -444,25 +454,26 @@ function draw() {
     }
     drawGame();
 
-    if (partyIsHost()) {
-      gameObjects.forEach((canonTower, index) => {
 
-        canonTower.move();
+    if (partyIsHost()) {
+      gameObjects.forEach((canon, index) => {
+
+        canon.move();
 
         const currentTime = millis();
         const selectedInterval = gameConstants.shootingIntervals[shootingIntervalSelect.value()];
 
         // Check if selectedInterval is a valid number
         if (typeof selectedInterval === 'number') {
-          if (currentTime - canonTower.lastShotTime > selectedInterval) {
+          if (currentTime - canon.lastShotTime > selectedInterval) {
             const activeFlights = flights.filter(f => f.x >= 0); // Only target visible flights - changed filter
 
             if (activeFlights.length > 0) {
-              const nearestFlight = canonTower.findNearestFlight(activeFlights);
+              const nearestFlight = canon.findNearestFlight(activeFlights);
 
               if (nearestFlight) {
-                canonTower.shoot(nearestFlight);
-                canonTower.lastShotTime = currentTime;
+                canon.shoot(nearestFlight);
+                canon.lastShotTime = currentTime;
               }
             }
           }
@@ -470,27 +481,27 @@ function draw() {
           console.warn("Invalid shooting interval:", shootingIntervalSelect.value());
         }
 
-        canonTower.moveBullets(); // Move bullets before drawing
-        canonTower.checkCollisionsWithFlights(flights);  // Add this line
+        canon.moveBullets(); // Move bullets before drawing
+        canon.checkCollisionsWithFlights(flights);  // Add this line
 
         // Sync to shared state
         shared.gameObjects[index] = {
           ...shared.gameObjects[index],
-          x: canonTower.x,
-          y: canonTower.y,
-          //          buls: JSON.parse(JSON.stringify(canonTower.buls)), // Deep copy
-          buls: canonTower.buls, // Deep copyfhg
-          angle: canonTower.angle,
-          lastShotTime: canonTower.lastShotTime,
-          hits: canonTower.hits, // Update shared state to include hits
+          x: canon.x,
+          y: canon.y,
+          //          buls: JSON.parse(JSON.stringify(canon.buls)), // Deep copy
+          buls: canon.buls, // Deep copyfhg
+          angle: canon.angle,
+          lastShotTime: canon.lastShotTime,
+          hits: canon.hits, // Update shared state to include hits
         };
       });
 
       // Calculate total hits from canon towers for each player
       let totalCanonHits = Array(15).fill(0);
-      gameObjects.forEach(canonTower => {
+      gameObjects.forEach(canon => {
         for (let i = 0; i < totalCanonHits.length; i++) {
-          totalCanonHits[i] += canonTower.hits[i];
+          totalCanonHits[i] += canon.hits[i];
         }
       });
       shared.canonTowerHits = totalCanonHits;
@@ -500,9 +511,9 @@ function draw() {
       // Ensure client has same number of towers as host
       while (gameObjects.length < shared.gameObjects.length) {
         const i = gameObjects.length;
-        gameObjects.push(new CanonTower({
+        gameObjects.push(new Canon({
           objectNumber: i,
-          objectName: `canonTower${i}`,
+          objectName: `canon${i}`,
           x: shared.gameObjects[i].x,
           y: shared.gameObjects[i].y,
           r: 30,
@@ -516,21 +527,21 @@ function draw() {
         gameObjects.pop();
       }
       // Update existing towers
-      gameObjects.forEach((canonTower, index) => {
-        canonTower.x = shared.gameObjects[index].x;
-        canonTower.y = shared.gameObjects[index].y;
-        canonTower.buls = shared.gameObjects[index].buls;
-        canonTower.angle = shared.gameObjects[index].angle;
-        canonTower.lastShotTime = shared.gameObjects[index].lastShotTime; // Sync lastShotTime
-        canonTower.hits = shared.gameObjects[index].hits || Array(15).fill(0);
+      gameObjects.forEach((canon, index) => {
+        canon.x = shared.gameObjects[index].x;
+        canon.y = shared.gameObjects[index].y;
+        canon.buls = shared.gameObjects[index].buls;
+        canon.angle = shared.gameObjects[index].angle;
+        canon.lastShotTime = shared.gameObjects[index].lastShotTime; // Sync lastShotTime
+        canon.hits = shared.gameObjects[index].hits || Array(15).fill(0);
       });
     }
 
     // Draw Canon Towers for all players
-    gameObjects.forEach(canonTower => {
-      canonTower.drawCanonTower();
-      canonTower.drawBullets();
-      canonTower.drawScore();
+    gameObjects.forEach(canon => {
+      canon.drawCanonTower();
+      canon.drawBullets();
+      canon.drawScore();
     });
   }
 }
@@ -653,6 +664,6 @@ function spawn(flight) {
   me.rotation = flight.rotation;
   me.color = flight.color;
   me.buls = [];
-  // Initialize hits array with 15 elements, all set to 0
   me.hits = Array(15).fill(0);
 }
+
