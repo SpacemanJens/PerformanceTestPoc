@@ -348,11 +348,11 @@ function setup() {
   text('Bullet Speed:', 10, 175);
   bulletSpeedSelect = createSelect();
   bulletSpeedSelect.position(20, 190);
-  bulletSpeedSelect.option('2');   // slow
-  bulletSpeedSelect.option('3');   // normal
-  bulletSpeedSelect.option('4');   // fast
-  bulletSpeedSelect.option('5');   // very fast
-  bulletSpeedSelect.selected('3');
+  bulletSpeedSelect.option('1');   // slow
+  bulletSpeedSelect.option('2');   // normal
+  bulletSpeedSelect.option('3');   // fast
+  bulletSpeedSelect.option('4');   // very fast
+  bulletSpeedSelect.selected('2');
 
   if (me.playerName === "observer") {
     joinGame();
